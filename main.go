@@ -19,7 +19,7 @@ const (
 	defaultToken         = "dkcv-xnc-1235-djvjk"
 	defaultDbPath        = "/dashboard/data/sqlite.db"
 	defaultApiPort       = "8009"
-	defaultBackupScript  = "/dashboard/backup2.sh"
+	defaultBackupScript  = "/dashboard/backup.sh"
 	maxRetries          = 3
 	retryDelay          = 20 * time.Second
 )
