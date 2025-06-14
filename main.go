@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	defaultToken         = "your-secret-token"
-	defaultDbPath        = "/data/sqlite.db"
+	defaultToken         = "dkcv-xnc-1235-djvjk"
+	defaultDbPath        = "/dashboard/data/sqlite.db"
 	defaultApiPort       = "8009"
-	defaultBackupScript  = "/path/to/your/backup.sh"
+	defaultBackupScript  = "/dashboard/backup.sh"
 	maxRetries          = 3
 	retryDelay          = 20 * time.Second
 )
