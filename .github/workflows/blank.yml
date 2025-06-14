@@ -58,19 +58,16 @@ jobs:
         BINARY_NAME="go-server-linux-${{ matrix.goarch }}"
         go build -ldflags="-s -w" -o ${BINARY_NAME} main.go
         
-        # Create tar.gz archive
-        tar -czf "${BINARY_NAME}.tar.gz" ${BINARY_NAME}
-        
-        # Create checksum
-        sha256sum "${BINARY_NAME}.tar.gz" > "${BINARY_NAME}.tar.gz.sha256"
+        # Create checksum for the binary
+        sha256sum "${BINARY_NAME}" > "${BINARY_NAME}.sha256"
     
     - name: Upload build artifacts
       uses: actions/upload-artifact@v4
       with:
         name: go-server-linux-${{ matrix.goarch }}
         path: |
-          go-server-linux-${{ matrix.goarch }}.tar.gz
-          go-server-linux-${{ matrix.goarch }}.tar.gz.sha256
+          go-server-linux-${{ matrix.goarch }}
+          go-server-linux-${{ matrix.goarch }}.sha256
 
   release:
     needs: build
@@ -97,7 +94,7 @@ jobs:
     - name: Prepare release files
       run: |
         mkdir -p release
-        find ./artifacts -name "*.tar.gz" -exec cp {} ./release/ \;
+        find ./artifacts -name "go-server-linux-*" -not -name "*.sha256" -exec cp {} ./release/ \;
         find ./artifacts -name "*.sha256" -exec cp {} ./release/ \;
         ls -la ./release/
     
@@ -107,10 +104,10 @@ jobs:
         tag_name: ${{ github.event.inputs.tag }}
         name: Release ${{ github.event.inputs.tag }}
         files: |
-          release/go-server-linux-amd64.tar.gz
-          release/go-server-linux-amd64.tar.gz.sha256
-          release/go-server-linux-arm64.tar.gz
-          release/go-server-linux-arm64.tar.gz.sha256
+          release/go-server-linux-amd64
+          release/go-server-linux-amd64.sha256
+          release/go-server-linux-arm64
+          release/go-server-linux-arm64.sha256
         generate_release_notes: true
         draft: false
         prerelease: false
