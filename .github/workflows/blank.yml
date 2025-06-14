@@ -1,0 +1,104 @@
+name: Build and Release Linux Binaries
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+
+env:
+  GO_VERSION: '1.21'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goarch: [amd64, arm64]
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ env.GO_VERSION }}
+    
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+    
+    - name: Download dependencies
+      run: go mod tidy && go mod download
+    
+    - name: Build Linux binary
+      env:
+        GOOS: linux
+        GOARCH: ${{ matrix.goarch }}
+        CGO_ENABLED: 1
+      run: |
+        # Install cross-compilation tools for ARM64
+        if [ "$GOARCH" = "arm64" ]; then
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+          export CC=aarch64-linux-gnu-gcc
+        fi
+        
+        # Build binary
+        BINARY_NAME="go-server-linux-${{ matrix.goarch }}"
+        go build -ldflags="-s -w" -o ${BINARY_NAME} main.go
+        
+        # Create tar.gz archive
+        tar -czf "${BINARY_NAME}.tar.gz" ${BINARY_NAME}
+        
+        # Create checksum
+        sha256sum "${BINARY_NAME}.tar.gz" > "${BINARY_NAME}.tar.gz.sha256"
+    
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: go-server-linux-${{ matrix.goarch }}
+        path: |
+          go-server-linux-${{ matrix.goarch }}.tar.gz
+          go-server-linux-${{ matrix.goarch }}.tar.gz.sha256
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    permissions:
+      contents: write
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+      with:
+        path: ./artifacts
+    
+    - name: Prepare release files
+      run: |
+        mkdir -p release
+        find ./artifacts -name "*.tar.gz" -exec cp {} ./release/ \;
+        find ./artifacts -name "*.sha256" -exec cp {} ./release/ \;
+        ls -la ./release/
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          release/go-server-linux-amd64.tar.gz
+          release/go-server-linux-amd64.tar.gz.sha256
+          release/go-server-linux-arm64.tar.gz
+          release/go-server-linux-arm64.tar.gz.sha256
+        generate_release_notes: true
+        draft: false
+        prerelease: false
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
